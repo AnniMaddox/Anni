@@ -1,8 +1,8 @@
 {
   "name": "EPhone",
-  "short_name": "EPhone",
+  "short_name": "Ephone",
   "description": "你的 EPhone 应用",
-  "start_url": "/ephone0627.html",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
