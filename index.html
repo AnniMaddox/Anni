@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 
     <title>Anni's</title>
 
@@ -5414,23 +5414,31 @@ input:checked + .slider:before {
         // 没有逗号则直接返回原字符串
         return str;
     }
-    function isImage(text,content) {
-        let currentImageData = content.image_url.url
-        // 提取Base64数据（去掉前缀）
-        const base64Data = currentImageData.split(',')[1];
-        // 根据图片类型获取MIME类型
-        const mimeType = currentImageData.match(/^data:(.*);base64/)[1];
-        return [
-            {text: `${text.text}用户向你发送了一张图片`},
-            {
-                inline_data: {
-                    mime_type: mimeType,
-                    data: base64Data
+    function isImage(content) {
+    // 安全檢查
+    if (content && content.image_url && content.image_url.url) {
+        try {
+            let currentImageData = content.image_url.url
+            const base64Data = currentImageData.split(',')[1];
+            const mimeType = currentImageData.match(/^data:(.*);base64/)[1];
+            return [
+                {text: '用户向你发送了一张图片'},
+                {
+                    inline_data: {
+                        mime_type: mimeType,
+                        data: base64Data
+                    }
                 }
-            }
-        ]
+            ]
+        } catch (error) {
+            console.error('圖片處理錯誤:', error);
+            return [{ text: '用户向你发送了一张图片' }];
+        }
     }
-    function toGeminiRequestData(model, apiKey, systemInstruction, messagesForDecision) {
+    return null;
+}
+
+function toGeminiRequestData(model, apiKey, systemInstruction, messagesForDecision) {
     let roleType = {
         user: 'user',
         assistant: 'model',
@@ -5447,55 +5455,38 @@ input:checked + .slider:before {
             body: JSON.stringify({
                 contents: messagesForDecision.map((item) => {
                     try {
-                        // 安全檢查並處理內容
+                        // 安全處理
                         if (Array.isArray(item.content)) {
-                            let textPart = '';
-                            let imagePart = null;
-                            
-                            // 遍歷內容數組
+                            // 找圖片
                             for (let contentItem of item.content) {
-                                if (contentItem.type === 'text') {
-                                    textPart = contentItem.text || '';
-                                } else if (contentItem.type === 'image_url' && contentItem.image_url && contentItem.image_url.url) {
-                                    // 處理圖片
-                                    let currentImageData = contentItem.image_url.url;
-                                    const base64Data = currentImageData.split(',')[1];
-                                    const mimeType = currentImageData.match(/^data:(.*);base64/)[1];
-                                    
-                                    imagePart = {
-                                        inline_data: {
-                                            mime_type: mimeType,
-                                            data: base64Data
-                                        }
-                                    };
+                                if (contentItem.type === 'image_url') {
+                                    const imageResult = isImage(contentItem);
+                                    if (imageResult) {
+                                        return {
+                                            role: roleType[item.role],
+                                            parts: imageResult
+                                        };
+                                    }
                                 }
                             }
-                            
-                            // 組合返回內容
-                            if (imagePart) {
-                                return {
-                                    role: roleType[item.role],
-                                    parts: [
-                                        { text: textPart + '用户向你发送了一张图片' },
-                                        imagePart
-                                    ]
-                                };
-                            } else {
-                                return {
-                                    role: roleType[item.role],
-                                    parts: [{ text: textPart }]
-                                };
-                            }
+                            // 沒圖片就當文字處理
+                            const textContent = item.content
+                                .filter(c => c.type === 'text')
+                                .map(c => c.text || '')
+                                .join('');
+                            return {
+                                role: roleType[item.role],
+                                parts: [{ text: textContent }]
+                            };
                         } else {
-                            // 簡單字符串內容
+                            // 原始邏輯
                             return {
                                 role: roleType[item.role],
                                 parts: [{ text: String(item.content) }]
                             };
                         }
                     } catch (error) {
-                        console.error('處理消息內容時出錯:', error);
-                        // 出錯時返回安全的默認值
+                        console.error('處理消息錯誤:', error);
                         return {
                             role: roleType[item.role] || 'user',
                             parts: [{ text: String(item.content || '') }]
@@ -5516,60 +5507,7 @@ input:checked + .slider:before {
 }
     document.addEventListener('DOMContentLoaded', () => {
     
-    // 🔥 新增：iPhone 修復代碼（插入在這裡）
-    if (/iPhone/.test(navigator.userAgent) && window.navigator.standalone) {
-        console.log('檢測到 iPhone 全螢幕模式，啟用輸入修復');
-        
-        setTimeout(() => {
-            const inputs = document.querySelectorAll('input[type="text"], textarea, input:not([type])');
-            console.log('找到輸入框數量:', inputs.length);
-            
-            inputs.forEach((input, index) => {
-                console.log(`處理輸入框 ${index + 1}`);
-                
-                input.style.fontSize = '16px';
-                
-                input.addEventListener('touchend', function(e) {
-                    console.log('touchend 觸發');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    this.focus();
-                    
-                    setTimeout(() => {
-                        this.focus();
-                        this.click();
-                    }, 50);
-                    
-                    setTimeout(() => {
-                        this.focus();
-                    }, 150);
-                    
-                }, { passive: false });
-                
-                input.addEventListener('click', function(e) {
-                    console.log('click 觸發');
-                    e.stopPropagation();
-                    
-                    setTimeout(() => {
-                        this.focus();
-                    }, 10);
-                });
-                
-                input.addEventListener('focus', function() {
-                    console.log('focus 成功');
-                    
-                    setTimeout(() => {
-                        this.scrollIntoView({ 
-                            behavior: 'smooth', 
-                            block: 'center' 
-                        });
-                    }, 100);
-                });
-            });
-        }, 500);
-    }
-    // 🔥 新增代碼結束
+   
 
         // ===================================================================
         // 1. 所有变量和常量定义
