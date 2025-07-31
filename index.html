@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
     <title>Anni's</title>
 
@@ -5515,6 +5515,61 @@ input:checked + .slider:before {
     }
 }
     document.addEventListener('DOMContentLoaded', () => {
+    
+    // 🔥 新增：iPhone 修復代碼（插入在這裡）
+    if (/iPhone/.test(navigator.userAgent) && window.navigator.standalone) {
+        console.log('檢測到 iPhone 全螢幕模式，啟用輸入修復');
+        
+        setTimeout(() => {
+            const inputs = document.querySelectorAll('input[type="text"], textarea, input:not([type])');
+            console.log('找到輸入框數量:', inputs.length);
+            
+            inputs.forEach((input, index) => {
+                console.log(`處理輸入框 ${index + 1}`);
+                
+                input.style.fontSize = '16px';
+                
+                input.addEventListener('touchend', function(e) {
+                    console.log('touchend 觸發');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    this.focus();
+                    
+                    setTimeout(() => {
+                        this.focus();
+                        this.click();
+                    }, 50);
+                    
+                    setTimeout(() => {
+                        this.focus();
+                    }, 150);
+                    
+                }, { passive: false });
+                
+                input.addEventListener('click', function(e) {
+                    console.log('click 觸發');
+                    e.stopPropagation();
+                    
+                    setTimeout(() => {
+                        this.focus();
+                    }, 10);
+                });
+                
+                input.addEventListener('focus', function() {
+                    console.log('focus 成功');
+                    
+                    setTimeout(() => {
+                        this.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                        });
+                    }, 100);
+                });
+            });
+        }, 500);
+    }
+    // 🔥 新增代碼結束
 
         // ===================================================================
         // 1. 所有变量和常量定义
