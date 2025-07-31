@@ -14898,5 +14898,12 @@ document.getElementById('existing-categories-list').addEventListener('click', (e
         init();
     });   
 </script>
+	<script>
+  const setBodyHeight = () => {
+    document.body.style.height = window.innerHeight + 'px';
+  };
+  window.addEventListener('resize', setBodyHeight);
+  setBodyHeight();
+</script>
 </body>
 </html>
