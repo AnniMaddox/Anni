@@ -1,8 +1,8 @@
 {
-  "name": "EPhone",
-  "short_name": "Ephone",
-  "description": "你的 EPhone 应用",
-  "start_url": "/Ephone/index.html",
+  "name": "Anni's",
+  "short_name": "Anni's",
+  "description": "你的 Anni's 应用",
+  "start_url": "/AnniTalk/index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",
