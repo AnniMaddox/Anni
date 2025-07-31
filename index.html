@@ -17,7 +17,7 @@
     <link rel="apple-touch-icon" href="/AnniTalk/icon-192.png">
 
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
-
+    
     <style>
         /* 你所有的 CSS 內容都貼在這裡 */
         @font-face { font-family: 'bulangni'; src: url('') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }
@@ -5399,7 +5399,7 @@ input:checked + .slider:before {
 
 <script>
 
-   const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
+        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
     // gemini如果是多个密钥, 那么随机获取一个
     function getRandomValue(str) {
         // 检查字符串是否包含逗号
@@ -5414,25 +5414,27 @@ input:checked + .slider:before {
         // 没有逗号则直接返回原字符串
         return str;
     }
-    function isImage(text,content) {
-        let currentImageData = content.image_url.url
-        // 提取Base64数据（去掉前缀）
-        const base64Data = currentImageData.split(',')[1];
-        // 根据图片类型获取MIME类型
-        const mimeType = currentImageData.match(/^data:(.*);base64/)[1];
-        return [
-            {text: `${text.text}用户向你发送了一张图片`},
-            {
-                inline_data: {
-                    mime_type: mimeType,
-                    data: base64Data
+    function isImage(content) {
+        if(content.image_url && content.image_url.url){
+            let currentImageData = content.image_url.url
+            // 提取Base64数据（去掉前缀）
+            const base64Data = currentImageData.split(',')[1];
+            // 根据图片类型获取MIME类型
+            const mimeType = currentImageData.match(/^data:(.*);base64/)[1];
+            return [
+                {text: '用户向你发送了一张图片'},
+                {
+                    inline_data: {
+                        mime_type: mimeType,
+                        data: base64Data
+                    }
                 }
-            }
-        ]
+            ]
+        }
+        return []
     }
     function toGeminiRequestData(model, apiKey, systemInstruction, messagesForDecision) {
         // 【核心修正】在这里，我们将 'system' 角色也映射为 'user'
-
         let roleType = {
             user: 'user',
             assistant: 'model',
@@ -5447,15 +5449,9 @@ input:checked + .slider:before {
                 },
                 body: JSON.stringify({
                     contents: messagesForDecision.map((item) => {
-                        let  includesImages = false;
-                        if(Array.isArray(item.content) && item.content.length === 2){
-                              includesImages =  item.content.some((sub)=>{
-                                return sub.type === 'image_url' && sub.image_url.url
-                            })
-                        }
                         return {
                             role: roleType[item.role], // 现在 'system' 会被正确转换为 'user'
-                            parts: includesImages ? isImage(item.content[0],item.content[1]) : [{ text: String(item.content) }] // 增加 String() 转换以防万一
+                            parts: Array.isArray(item.content) && item.content.length > 0 && item.content[0].type === 'image_url' ? isImage(item.content[0]) : [{ text: String(item.content) }] // 增加 String() 转换以防万一
                         }
                     }),
                     generationConfig: {
@@ -14897,13 +14893,6 @@ document.getElementById('existing-categories-list').addEventListener('click', (e
 
         init();
     });   
-</script>
-	<script>
-  const setBodyHeight = () => {
-    document.body.style.height = window.innerHeight + 'px';
-  };
-  window.addEventListener('resize', setBodyHeight);
-  setBodyHeight();
 </script>
 </body>
 </html>
