@@ -17,7 +17,7 @@
     <link rel="apple-touch-icon" href="/AnniTalk/icon-192.png">
 
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
-    
+
     <style>
         /* 你所有的 CSS 內容都貼在這裡 */
         @font-face { font-family: 'bulangni'; src: url('') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }
@@ -5399,7 +5399,7 @@ input:checked + .slider:before {
 
 <script>
 
-        const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
+   const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models'
     // gemini如果是多个密钥, 那么随机获取一个
     function getRandomValue(str) {
         // 检查字符串是否包含逗号
@@ -5414,58 +5414,106 @@ input:checked + .slider:before {
         // 没有逗号则直接返回原字符串
         return str;
     }
-    function isImage(content) {
-        if(content.image_url && content.image_url.url){
-            let currentImageData = content.image_url.url
-            // 提取Base64数据（去掉前缀）
-            const base64Data = currentImageData.split(',')[1];
-            // 根据图片类型获取MIME类型
-            const mimeType = currentImageData.match(/^data:(.*);base64/)[1];
-            return [
-                {text: '用户向你发送了一张图片'},
-                {
-                    inline_data: {
-                        mime_type: mimeType,
-                        data: base64Data
-                    }
+    function isImage(text,content) {
+        let currentImageData = content.image_url.url
+        // 提取Base64数据（去掉前缀）
+        const base64Data = currentImageData.split(',')[1];
+        // 根据图片类型获取MIME类型
+        const mimeType = currentImageData.match(/^data:(.*);base64/)[1];
+        return [
+            {text: `${text.text}用户向你发送了一张图片`},
+            {
+                inline_data: {
+                    mime_type: mimeType,
+                    data: base64Data
                 }
-            ]
-        }
-        return []
+            }
+        ]
     }
     function toGeminiRequestData(model, apiKey, systemInstruction, messagesForDecision) {
-        // 【核心修正】在这里，我们将 'system' 角色也映射为 'user'
-        let roleType = {
-            user: 'user',
-            assistant: 'model',
-            system: 'user' // <--- 新增这一行
-        }
-        return {
-            url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${getRandomValue(apiKey)}`,
-            data: {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: messagesForDecision.map((item) => {
-                        return {
-                            role: roleType[item.role], // 现在 'system' 会被正确转换为 'user'
-                            parts: Array.isArray(item.content) && item.content.length > 0 && item.content[0].type === 'image_url' ? isImage(item.content[0]) : [{ text: String(item.content) }] // 增加 String() 转换以防万一
+    let roleType = {
+        user: 'user',
+        assistant: 'model',
+        system: 'user'
+    }
+    
+    return {
+        url: `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${getRandomValue(apiKey)}`,
+        data: {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                contents: messagesForDecision.map((item) => {
+                    try {
+                        // 安全檢查並處理內容
+                        if (Array.isArray(item.content)) {
+                            let textPart = '';
+                            let imagePart = null;
+                            
+                            // 遍歷內容數組
+                            for (let contentItem of item.content) {
+                                if (contentItem.type === 'text') {
+                                    textPart = contentItem.text || '';
+                                } else if (contentItem.type === 'image_url' && contentItem.image_url && contentItem.image_url.url) {
+                                    // 處理圖片
+                                    let currentImageData = contentItem.image_url.url;
+                                    const base64Data = currentImageData.split(',')[1];
+                                    const mimeType = currentImageData.match(/^data:(.*);base64/)[1];
+                                    
+                                    imagePart = {
+                                        inline_data: {
+                                            mime_type: mimeType,
+                                            data: base64Data
+                                        }
+                                    };
+                                }
+                            }
+                            
+                            // 組合返回內容
+                            if (imagePart) {
+                                return {
+                                    role: roleType[item.role],
+                                    parts: [
+                                        { text: textPart + '用户向你发送了一张图片' },
+                                        imagePart
+                                    ]
+                                };
+                            } else {
+                                return {
+                                    role: roleType[item.role],
+                                    parts: [{ text: textPart }]
+                                };
+                            }
+                        } else {
+                            // 簡單字符串內容
+                            return {
+                                role: roleType[item.role],
+                                parts: [{ text: String(item.content) }]
+                            };
                         }
-                    }),
-                    generationConfig: {
-                        temperature: 0.8,
-                    },
-                    "systemInstruction": {
-                        "parts": [{
-                            "text": systemInstruction
-                        }]
+                    } catch (error) {
+                        console.error('處理消息內容時出錯:', error);
+                        // 出錯時返回安全的默認值
+                        return {
+                            role: roleType[item.role] || 'user',
+                            parts: [{ text: String(item.content || '') }]
+                        };
                     }
-                })
-            }
+                }),
+                generationConfig: {
+                    temperature: 0.8,
+                },
+                "systemInstruction": {
+                    "parts": [{
+                        "text": systemInstruction
+                    }]
+                }
+            })
         }
     }
+}
     document.addEventListener('DOMContentLoaded', () => {
 
         // ===================================================================
@@ -14894,5 +14942,6 @@ document.getElementById('existing-categories-list').addEventListener('click', (e
         init();
     });   
 </script>
+
 </body>
 </html>
